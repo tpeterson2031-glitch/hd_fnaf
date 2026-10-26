@@ -1,0 +1,113 @@
+
+/* FNAF World mobile controls - experimental prototype */
+(() => {
+  if (document.getElementById("fnaf-touch-controls")) return;
+
+  const style = document.createElement("style");
+  style.textContent = `
+    #fnaf-touch-controls {
+      position: fixed; inset: 0; z-index: 99999;
+      pointer-events: none; font-family: sans-serif;
+      touch-action: none;
+    }
+    #fnaf-touch-controls button {
+      position: absolute; display: flex;
+      align-items: center; justify-content: center;
+      width: 48px; height: 48px;
+      border: 2px solid #ffffff99; border-radius: 14px;
+      background: #151515cc; color: white;
+      font-size: 20px; font-weight: bold;
+      touch-action: none; user-select: none;
+    }
+    #fnaf-touch-controls .pad {
+      position: absolute; left: 18px; bottom: 22px;
+      width: 148px; height: 148px; pointer-events: auto;
+    }
+    #fnaf-touch-controls .up { left: 50px; top: 0; }
+    #fnaf-touch-controls .left { left: 0; top: 50px; }
+    #fnaf-touch-controls .right { right: 0; top: 50px; }
+    #fnaf-touch-controls .down { left: 50px; bottom: 0; }
+    #fnaf-touch-controls .actions {
+      position: absolute; right: 18px; bottom: 26px;
+      display: flex; gap: 10px; align-items: flex-end;
+      pointer-events: auto;
+    }
+    #fnaf-touch-controls .actions button {
+      position: relative; right: auto; bottom: auto;
+      width: 58px; height: 58px; border-radius: 50%;
+      font-size: 12px;
+    }
+    @media (pointer: fine) {
+      #fnaf-touch-controls { display: none; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  const root = document.createElement("div");
+  root.id = "fnaf-touch-controls";
+  root.innerHTML = `
+    <div class="pad">
+      <button class="up" data-key="ArrowUp">▲</button>
+      <button class="left" data-key="ArrowLeft">◀</button>
+      <button class="right" data-key="ArrowRight">▶</button>
+      <button class="down" data-key="ArrowDown">▼</button>
+    </div>
+    <div class="actions">
+      <button data-key="Escape">BACK</button>
+      <button data-key="Enter">OK</button>
+      <button data-key=" ">ACT</button>
+    </div>
+  `;
+  document.body.appendChild(root);
+
+  const keyCodes = {
+    ArrowUp: 38, ArrowDown: 40,
+    ArrowLeft: 37, ArrowRight: 39,
+    Enter: 13, Escape: 27, " ": 32
+  };
+  const held = new Set();
+
+  function sendKey(key, type) {
+    document.dispatchEvent(new KeyboardEvent(type, {
+      key: key === " " ? " " : key,
+      code: key === " " ? "Space" : key,
+      keyCode: keyCodes[key] || 0,
+      which: keyCodes[key] || 0,
+      bubbles: true,
+      cancelable: true
+    }));
+  }
+
+  root.querySelectorAll("[data-key]").forEach(button => {
+    const key = button.dataset.key;
+
+    button.addEventListener("pointerdown", event => {
+      event.preventDefault();
+      if (!held.has(key)) {
+        held.add(key);
+        sendKey(key, "keydown");
+      }
+      button.setPointerCapture?.(event.pointerId);
+      button.style.filter = "brightness(1.6)";
+    });
+
+    function release(event) {
+      event.preventDefault();
+      if (held.has(key)) {
+        held.delete(key);
+        sendKey(key, "keyup");
+      }
+      button.style.filter = "";
+    }
+
+    button.addEventListener("pointerup", release);
+    button.addEventListener("pointercancel", release);
+    button.addEventListener("lostpointercapture", release);
+  });
+
+  window.addEventListener("blur", () => {
+    held.forEach(key => sendKey(key, "keyup"));
+    held.clear();
+  });
+})();
+
